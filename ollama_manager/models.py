@@ -5,16 +5,16 @@ from datetime import datetime
 @dataclass
 class OllamaModel:
     name: str
-    size: int
-    modified: datetime
-    digest: str
+    size: Optional[int] = None
+    modified: Optional[datetime] = None
+    digest: Optional[str] = None
     
     @classmethod
     def from_dict(cls, data: dict) -> 'OllamaModel':
         return cls(
             name=data['name'],
             size=data.get('size', 0),
-            modified=datetime.fromisoformat(data['modified']),
+            modified=datetime.fromisoformat(data['modified']) if 'modified' in data else datetime.now(),
             digest=data.get('digest', '')
         )
 
