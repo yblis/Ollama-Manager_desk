@@ -63,18 +63,35 @@ class MainWindow(QMainWindow):
         
         layout.addLayout(button_layout)
         
-        # Set up auto-refresh timer with increased interval (30 seconds)
-        self.refresh_timer = QTimer()
-        self.refresh_timer.timeout.connect(self.refresh_all)
-        self.refresh_timer.start(30000)  # Refresh every 30 seconds
+        # Set up refresh timer at the end
+        self.setup_refresh_timer()
         
         # Initial refresh
         self.refresh_all()
     
+    def setup_refresh_timer(self):
+        self.refresh_timer = QTimer(self)  # Make sure timer has parent
+        self.refresh_timer.timeout.connect(self.refresh_all)
+        self.refresh_timer.start(30000)  # 30 seconds
+
+    def cleanup_timer(self):
+        if hasattr(self, 'refresh_timer'):
+            self.refresh_timer.stop()
+            self.refresh_timer.deleteLater()
+    
     def closeEvent(self, event):
+        # Stop timer first
+        self.cleanup_timer()
+        
         # Stop any running workers
-        if hasattr(self.running_list, 'stop_worker'):
-            self.running_list.stop_worker.stop()
+        for attr in ['model_worker', 'running_worker']:
+            if hasattr(self, attr):
+                worker = getattr(self, attr)
+                if worker and worker.isRunning():
+                    worker.quit()
+                    worker.wait()
+        
+        # Call parent's closeEvent
         super().closeEvent(event)
     
     def show_pull_dialog(self):
@@ -83,8 +100,11 @@ class MainWindow(QMainWindow):
         self.refresh_all()
     
     def refresh_all(self):
-        self.refresh_models()
-        self.refresh_running_models()
+        try:
+            self.refresh_models()
+            self.refresh_running_models()
+        except Exception as e:
+            self.show_error(f"Refresh failed: {str(e)}")
     
     def refresh_models(self):
         self.model_worker = ModelListWorker()

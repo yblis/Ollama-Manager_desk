@@ -1,6 +1,6 @@
 import sys
 import os
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication, QMessageBox
 from ollama_manager.ui.main_window import MainWindow
 
 def main():
@@ -11,10 +11,20 @@ def main():
     app.setApplicationName("Ollama Manager")
     app.setStyle('Fusion')  # Modern look across platforms
     
-    window = MainWindow()
-    window.show()
+    # Suppress platform plugin warnings
+    def message_handler(mode, context, message):
+        if "propagateSizeHints" not in message:
+            print(f"{mode}: {message}")
     
-    sys.exit(app.exec())
+    app.messageHandler = message_handler
+    
+    try:
+        window = MainWindow()
+        window.show()
+        return app.exec()
+    except Exception as e:
+        QMessageBox.critical(None, "Error", f"Failed to start application: {str(e)}")
+        return 1
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
