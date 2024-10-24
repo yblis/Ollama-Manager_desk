@@ -20,7 +20,7 @@ class OllamaModel:
 
 @dataclass
 class RunningInstance:
-    instance_id: str
+    instance_id: str  # First 8 chars of digest
     model_name: str
     started: datetime
     
@@ -29,5 +29,5 @@ class RunningInstance:
         return cls(
             instance_id=data['instance_id'],
             model_name=data['model'],
-            started=datetime.fromisoformat(data['started'])
+            started=datetime.fromisoformat(data['started'].replace('Z', '+00:00'))
         )
