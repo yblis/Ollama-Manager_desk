@@ -1,11 +1,11 @@
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, 
                            QPushButton, QLabel, QMessageBox, QSplitter)
-from PyQt6.QtCore import Qt, QTimer
-from datetime import datetime, timedelta
+from PyQt6.QtCore import Qt
+from datetime import datetime
 from .model_list import ModelListWidget
 from .running_model_list import RunningModelListWidget
 from .dialogs import PullModelDialog
-from ..workers import ModelListWorker, RunningModelListWorker
+from ..workers import ModelListWorker, RunningModelListWorker, BackgroundWorker
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -63,35 +63,20 @@ class MainWindow(QMainWindow):
         
         layout.addLayout(button_layout)
         
-        # Set up refresh timer at the end
-        self.setup_refresh_timer()
+        # Create background worker
+        self.background_worker = BackgroundWorker()
+        self.background_worker.models_updated.connect(self.update_model_list)
+        self.background_worker.running_updated.connect(self.update_running_list)
+        self.background_worker.error.connect(self.show_error)
+        self.background_worker.start()
         
         # Initial refresh
         self.refresh_all()
     
-    def setup_refresh_timer(self):
-        self.refresh_timer = QTimer(self)  # Make sure timer has parent
-        self.refresh_timer.timeout.connect(self.refresh_all)
-        self.refresh_timer.start(30000)  # 30 seconds
-
-    def cleanup_timer(self):
-        if hasattr(self, 'refresh_timer'):
-            self.refresh_timer.stop()
-            self.refresh_timer.deleteLater()
-    
     def closeEvent(self, event):
-        # Stop timer first
-        self.cleanup_timer()
-        
-        # Stop any running workers
-        for attr in ['model_worker', 'running_worker']:
-            if hasattr(self, attr):
-                worker = getattr(self, attr)
-                if worker and worker.isRunning():
-                    worker.quit()
-                    worker.wait()
-        
-        # Call parent's closeEvent
+        # Stop background worker
+        if hasattr(self, 'background_worker'):
+            self.background_worker.stop()
         super().closeEvent(event)
     
     def show_pull_dialog(self):
@@ -133,31 +118,5 @@ class MainWindow(QMainWindow):
         self.last_error_time = None
     
     def show_error(self, message):
-        """Enhanced error handling with suppression and auto-refresh control"""
-        current_time = datetime.now()
-        
-        # Check if this is a repeat error within 30 seconds
-        should_show_error = True
-        if self.last_error_message == message and self.last_error_time:
-            time_diff = current_time - self.last_error_time
-            if time_diff < timedelta(seconds=30):
-                should_show_error = False
-        
-        # Update error state
-        self.consecutive_errors += 1
-        self.last_error_message = message
-        self.last_error_time = current_time
-        
-        # Handle auto-refresh disable after 3 consecutive errors
-        if self.consecutive_errors >= 3 and self.refresh_timer.isActive():
-            self.refresh_timer.stop()
-            QMessageBox.warning(
-                self,
-                "Auto-refresh Disabled",
-                "Auto-refresh has been disabled due to repeated errors. "
-                "You can still refresh manually using the Refresh button."
-            )
-        
-        # Show error message if not suppressed
-        if should_show_error:
-            QMessageBox.critical(self, "Error", message)
+        """Show error message to user"""
+        QMessageBox.critical(self, "Error", message)
