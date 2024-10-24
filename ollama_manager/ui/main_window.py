@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, 
                            QPushButton, QLabel, QMessageBox, QSplitter)
 from PyQt6.QtCore import Qt, QTimer
+from datetime import datetime, timedelta
 from .model_list import ModelListWidget
 from .running_model_list import RunningModelListWidget
 from .dialogs import PullModelDialog
@@ -11,6 +12,11 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Ollama Manager")
         self.setMinimumSize(800, 600)
+        
+        # Error handling state
+        self.consecutive_errors = 0
+        self.last_error_message = None
+        self.last_error_time = None
         
         # Create central widget and layout
         central_widget = QWidget()
@@ -57,10 +63,10 @@ class MainWindow(QMainWindow):
         
         layout.addLayout(button_layout)
         
-        # Set up auto-refresh timer
+        # Set up auto-refresh timer with increased interval (30 seconds)
         self.refresh_timer = QTimer()
         self.refresh_timer.timeout.connect(self.refresh_all)
-        self.refresh_timer.start(5000)  # Refresh every 5 seconds
+        self.refresh_timer.start(30000)  # Refresh every 30 seconds
         
         # Initial refresh
         self.refresh_all()
@@ -88,9 +94,44 @@ class MainWindow(QMainWindow):
     
     def update_model_list(self, models):
         self.model_list.update_models(models)
+        self.reset_error_state()
     
     def update_running_list(self, instances):
         self.running_list.update_running_models(instances)
+        self.reset_error_state()
+    
+    def reset_error_state(self):
+        """Reset error counters when a refresh succeeds"""
+        self.consecutive_errors = 0
+        self.last_error_message = None
+        self.last_error_time = None
     
     def show_error(self, message):
-        QMessageBox.critical(self, "Error", message)
+        """Enhanced error handling with suppression and auto-refresh control"""
+        current_time = datetime.now()
+        
+        # Check if this is a repeat error within 30 seconds
+        should_show_error = True
+        if self.last_error_message == message and self.last_error_time:
+            time_diff = current_time - self.last_error_time
+            if time_diff < timedelta(seconds=30):
+                should_show_error = False
+        
+        # Update error state
+        self.consecutive_errors += 1
+        self.last_error_message = message
+        self.last_error_time = current_time
+        
+        # Handle auto-refresh disable after 3 consecutive errors
+        if self.consecutive_errors >= 3 and self.refresh_timer.isActive():
+            self.refresh_timer.stop()
+            QMessageBox.warning(
+                self,
+                "Auto-refresh Disabled",
+                "Auto-refresh has been disabled due to repeated errors. "
+                "You can still refresh manually using the Refresh button."
+            )
+        
+        # Show error message if not suppressed
+        if should_show_error:
+            QMessageBox.critical(self, "Error", message)
