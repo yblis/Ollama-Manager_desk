@@ -64,10 +64,13 @@ class RunningModelListWidget(QWidget):
         )
         
         if reply == QMessageBox.StandardButton.Yes:
-            worker = RunningModelStopWorker(instance_id)
-            worker.finished.connect(lambda: self.handle_stop_complete(instance_id))
-            worker.error.connect(self.show_error)
-            worker.start()
+            # Keep reference to worker to prevent premature destruction
+            self.stop_worker = RunningModelStopWorker(instance_id)
+            self.stop_worker.finished.connect(lambda: self.handle_stop_complete(instance_id))
+            self.stop_worker.error.connect(self.show_error)
+            # Add cleanup handler
+            self.stop_worker.finished.connect(self.stop_worker.deleteLater)
+            self.stop_worker.start()
     
     def handle_stop_complete(self, instance_id):
         QMessageBox.information(

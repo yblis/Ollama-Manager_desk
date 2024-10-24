@@ -71,6 +71,12 @@ class MainWindow(QMainWindow):
         # Initial refresh
         self.refresh_all()
     
+    def closeEvent(self, event):
+        # Stop any running workers
+        if hasattr(self.running_list, 'stop_worker'):
+            self.running_list.stop_worker.stop()
+        super().closeEvent(event)
+    
     def show_pull_dialog(self):
         dialog = PullModelDialog(self)
         dialog.exec()

@@ -61,10 +61,18 @@ class RunningModelStopWorker(QThread):
     def __init__(self, instance_id: str):
         super().__init__()
         self.instance_id = instance_id
+        # Add flag to track if thread should stop
+        self.should_stop = False
     
     def run(self):
         try:
             success = OllamaAPI.stop_instance(self.instance_id)
-            self.finished.emit(success)
+            if not self.should_stop:  # Only emit if not stopped
+                self.finished.emit(success)
         except Exception as e:
-            self.error.emit(str(e))
+            if not self.should_stop:  # Only emit if not stopped
+                self.error.emit(str(e))
+    
+    def stop(self):
+        self.should_stop = True
+        self.wait()  # Wait for thread to finish

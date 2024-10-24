@@ -24,7 +24,7 @@ agentRequireRestartOnSave = false
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "xvfb-run -a python main.py"
+args = "python main.py"
 
 [deployment]
-run = ["sh", "-c", "xvfb-run -a python main.py"]
+run = ["sh", "-c", "python main.py"]
