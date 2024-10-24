@@ -20,14 +20,16 @@ class OllamaModel:
 
 @dataclass
 class RunningInstance:
-    instance_id: str  # First 8 chars of digest
+    instance_id: str
     model_name: str
     started: datetime
+    size_vram: int = 0
     
     @classmethod
     def from_dict(cls, data: dict) -> 'RunningInstance':
         return cls(
             instance_id=data['instance_id'],
             model_name=data['model'],
-            started=datetime.fromisoformat(data['started'].replace('Z', '+00:00'))
+            started=datetime.fromisoformat(data['started'].replace('Z', '+00:00')),
+            size_vram=data.get('size_vram', 0)
         )

@@ -1,5 +1,6 @@
 import requests
 from typing import List, Dict, Optional
+from datetime import datetime
 
 class OllamaAPI:
     BASE_URL = "http://localhost:11434/api"
@@ -42,18 +43,19 @@ class OllamaAPI:
 
     @staticmethod
     def list_running() -> List[Dict]:
-        """Get list of running model instances using tags endpoint."""
+        """Get list of running model instances."""
         try:
-            response = requests.get(f"{OllamaAPI.BASE_URL}/tags")
+            response = requests.get(f"{OllamaAPI.BASE_URL}/ps")
             response.raise_for_status()
             models = response.json().get('models', [])
-            # Filter and transform the model data
+            # Transform the model data
             running_instances = []
             for model in models:
                 running_instances.append({
-                    'instance_id': model['digest'][:8],  # Use first 8 chars of digest as ID
+                    'instance_id': model['digest'][:8],
                     'model': model['name'],
-                    'started': model['modified_at']
+                    'started': model.get('expires_at', datetime.now().isoformat()),
+                    'size_vram': model.get('size_vram', 0)
                 })
             return running_instances
         except requests.exceptions.RequestException as e:

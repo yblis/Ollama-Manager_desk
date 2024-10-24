@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.dbus
     pkgs.zstd
     pkgs.freetype
     pkgs.fontconfig

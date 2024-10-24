@@ -11,14 +11,23 @@ class RunningModelListWidget(QWidget):
         
         # Create table
         self.table = QTableWidget()
-        self.table.setColumnCount(4)
+        self.table.setColumnCount(5)  # Added VRAM Usage column
         self.table.setHorizontalHeaderLabels([
-            "Model Name", "Instance ID", "Start Time", "Actions"
+            "Model Name", "Instance ID", "Start Time", "VRAM Usage", "Actions"
         ])
         layout.addWidget(self.table)
         
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+    
+    def format_vram_size(self, size_bytes: int) -> str:
+        """Format VRAM size to human-readable format"""
+        if size_bytes < 1024 * 1024:  # Less than 1MB
+            return f"{size_bytes / 1024:.1f} KB"
+        elif size_bytes < 1024 * 1024 * 1024:  # Less than 1GB
+            return f"{size_bytes / (1024 * 1024):.1f} MB"
+        else:
+            return f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
     
     def update_running_models(self, instances):
         self.table.setRowCount(0)
@@ -33,13 +42,16 @@ class RunningModelListWidget(QWidget):
             self.table.setItem(row, 2, QTableWidgetItem(
                 instance.started.strftime("%Y-%m-%d %H:%M:%S")
             ))
+            self.table.setItem(row, 3, QTableWidgetItem(
+                self.format_vram_size(instance.size_vram)
+            ))
             
             # Add stop button
             stop_button = QPushButton("Stop")
             stop_button.clicked.connect(
                 lambda checked, i=instance.instance_id: self.stop_instance(i)
             )
-            self.table.setCellWidget(row, 3, stop_button)
+            self.table.setCellWidget(row, 4, stop_button)
         
         self.table.resizeColumnsToContents()
     
